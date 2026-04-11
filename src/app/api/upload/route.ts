@@ -1,19 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { storage } from "@/lib/storage";
-import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { MAX_FILE_SIZE } from "@/lib/constants";
 
 export async function POST(req: NextRequest) {
   try {
-    // Check authentication
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+    // Note: For production, implement rate-limiting here or signed URLs
+    // We allow public uploads for the Quote Request form in the MVP version.
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;

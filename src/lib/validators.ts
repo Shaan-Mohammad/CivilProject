@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { EnquiryStatus, Priority, EnquirySource } from "@/types";
 
 // ─── Helper Validators ────────────────────────────────────────────────
 const phoneRegex = /^[+]?[\d\s()-]{7,20}$/;

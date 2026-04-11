@@ -30,7 +30,8 @@ class LocalStorageAdapter implements StorageAdapter {
   async upload(
     file: Buffer,
     filename: string,
-    _contentType: string
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    contentType: string
   ): Promise<string> {
     // Ensure upload directory exists
     if (!existsSync(this.uploadDir)) {
