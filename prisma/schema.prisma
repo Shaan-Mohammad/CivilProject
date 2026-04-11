@@ -1,0 +1,233 @@
+// CivilDraft Pro - Prisma Schema
+// SQLite-first, PostgreSQL-ready architecture
+// Enums are enforced at TypeScript/Zod level since SQLite doesn't support Prisma enums
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ─── Auth ─────────────────────────────────────────────────────────────
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("ADMIN") // ADMIN | SUPER_ADMIN
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── CRM Pipeline ────────────────────────────────────────────────────
+// Status enum values (enforced via TypeScript):
+// NEW | QUALIFIED | QUOTE_SENT | NEGOTIATION | IN_PROGRESS | REVISION | DELIVERED | CLOSED | LOST
+// Priority enum values: LOW | MEDIUM | HIGH | URGENT
+// Source enum values: WEBSITE | REFERRAL | SOCIAL | DIRECT | OTHER
+
+model Enquiry {
+  id          String         @id @default(cuid())
+  name        String
+  email       String
+  phone       String?
+  company     String?
+  service     String
+  status      String         @default("NEW")
+  priority    String         @default("MEDIUM")
+  budget      String?
+  description String
+  source      String         @default("WEBSITE")
+  assignedTo  String?
+  notes       EnquiryNote[]
+  files       UploadedFile[]
+  quoteRequest QuoteRequest?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model EnquiryNote {
+  id        String   @id @default(cuid())
+  content   String
+  type      String   @default("NOTE") // NOTE | STATUS_CHANGE | SYSTEM
+  enquiryId String
+  enquiry   Enquiry  @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+  createdBy String?
+  createdAt DateTime @default(now())
+}
+
+model UploadedFile {
+  id             String        @id @default(cuid())
+  name           String
+  url            String
+  size           Int
+  type           String
+  enquiryId      String?
+  enquiry        Enquiry?      @relation(fields: [enquiryId], references: [id], onDelete: SetNull)
+  projectId      String?
+  project        Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  quoteRequestId String?
+  quoteRequest   QuoteRequest? @relation(fields: [quoteRequestId], references: [id], onDelete: SetNull)
+  createdAt      DateTime      @default(now())
+}
+
+// ─── Services ─────────────────────────────────────────────────────────
+model Service {
+  id              String   @id @default(cuid())
+  title           String
+  slug            String   @unique
+  description     String
+  longDescription String?
+  icon            String?
+  image           String?
+  features        String?  // JSON array as string (SQLite compat)
+  order           Int      @default(0)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ─── Portfolio ────────────────────────────────────────────────────────
+model Project {
+  id          String         @id @default(cuid())
+  title       String
+  slug        String         @unique
+  description String
+  client      String?
+  location    String?
+  category    String
+  status      String         @default("COMPLETED")
+  completedAt DateTime?
+  featured    Boolean        @default(false)
+  coverImage  String?
+  images      ProjectImage[]
+  files       UploadedFile[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model ProjectImage {
+  id        String   @id @default(cuid())
+  url       String
+  caption   String?
+  order     Int      @default(0)
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+// ─── Testimonials ─────────────────────────────────────────────────────
+model Testimonial {
+  id       String  @id @default(cuid())
+  name     String
+  company  String?
+  role     String?
+  content  String
+  rating   Int     @default(5)
+  avatar   String?
+  featured Boolean @default(false)
+  isActive Boolean @default(true)
+  order    Int     @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Blog ─────────────────────────────────────────────────────────────
+model BlogPost {
+  id          String        @id @default(cuid())
+  title       String
+  slug        String        @unique
+  excerpt     String?
+  content     String
+  coverImage  String?
+  author      String?
+  categoryId  String?
+  category    BlogCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  tags        String?       // Comma-separated (SQLite compat)
+  published   Boolean       @default(false)
+  publishedAt DateTime?
+  views       Int           @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model BlogCategory {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  slug      String     @unique
+  posts     BlogPost[]
+  createdAt DateTime   @default(now())
+}
+
+// ─── FAQ ──────────────────────────────────────────────────────────────
+model FAQ {
+  id       String  @id @default(cuid())
+  question String
+  answer   String
+  slug     String? @unique
+  category String?
+  order    Int     @default(0)
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Site Settings ────────────────────────────────────────────────────
+model SiteSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  type        String   @default("TEXT") // TEXT | NUMBER | BOOLEAN | JSON | IMAGE
+  group       String   @default("general")
+  label       String?
+  description String?
+  updatedAt   DateTime @updatedAt
+}
+
+// ─── Analytics ────────────────────────────────────────────────────────
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  event     String   // PAGE_VIEW | QUOTE_REQUEST | CONTACT | CTA_CLICK | etc.
+  page      String?
+  metadata  String?  // JSON string
+  ip        String?
+  userAgent String?
+  referrer  String?
+  sessionId String?
+  createdAt DateTime @default(now())
+}
+
+// ─── Contact ──────────────────────────────────────────────────────────
+model ContactMessage {
+  id      String  @id @default(cuid())
+  name    String
+  email   String
+  phone   String?
+  subject String?
+  message String
+  isRead  Boolean @default(false)
+  createdAt DateTime @default(now())
+}
+
+// ─── Quote Requests ───────────────────────────────────────────────────
+model QuoteRequest {
+  id          String         @id @default(cuid())
+  name        String
+  email       String
+  phone       String?
+  serviceType String
+  projectType String?
+  plotArea    String?
+  floors      String?
+  budget      String?
+  timeline    String?
+  description String
+  files       UploadedFile[]
+  enquiryId   String?        @unique
+  enquiry     Enquiry?       @relation(fields: [enquiryId], references: [id], onDelete: SetNull)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
