@@ -3,7 +3,7 @@
 // Enums are enforced at TypeScript/Zod level since SQLite doesn't support Prisma enums
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
